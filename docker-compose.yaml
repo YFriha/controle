@@ -1,0 +1,84 @@
+version: '1'
+
+services:
+  mysql:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    networks:
+      - my_network
+
+  Eureka_server2:
+    build:
+      context: ./Eureka_server2
+    ports:
+      - "8761:8761"
+    depends_on:
+      - mysql
+    networks:
+      - my_network
+
+  client_serv:
+    build:
+      context: ./client_serv
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mysql
+      - Eureka_server2
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/clientservicedb?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      EUREKA_URI: http://localhost:8761/eureka
+    networks:
+      - my_network
+
+  carService:
+    build:
+      context: ./carService
+    ports:
+      - "8082:8082"
+    depends_on:
+      - mysql
+      - Eureka_server2
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/cardb?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      EUREKA_URI: http://localhost:8761/eureka
+    networks:
+      - my_network
+    healthcheck:
+      test: "/usr/bin/mysql --user=root --password=root --execute \"SHOW DATABASES;\""
+      interval: 5s
+      timeout: 2s
+      retries: 100
+
+  aballaghgateway:
+    build:
+      context: ./GateWay
+    ports:
+      - "8888:8888"
+    depends_on:
+      - Eureka_server2
+    environment:
+      EUREKA_URI: http://localhost:8761/eureka
+    networks:
+      - my_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "9000:80"
+    networks:
+      - my_network
+
+networks:
+  my_network:
